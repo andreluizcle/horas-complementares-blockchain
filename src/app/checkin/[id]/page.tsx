@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarDays, Clock, Building2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { prisma } from "@/lib/prisma";
+import { ReceberCredencial } from "./receber-credencial";
 import { formatarData, formatarHoras, labelDaCategoria } from "@/lib/activity";
 
 export default async function CheckinPage({ params }: PageProps<"/checkin/[id]">) {
@@ -52,17 +51,7 @@ export default async function CheckinPage({ params }: PageProps<"/checkin/[id]">
 
           <Separator />
 
-          <div className="bg-muted/50 rounded-lg border border-dashed p-4 text-center">
-            <p className="text-muted-foreground text-sm text-pretty">
-              A emissão da credencial na blockchain chega na próxima fase. Por
-              enquanto, esta tela confirma que o link de check-in aponta para a
-              atividade certa.
-            </p>
-          </div>
-
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/">Voltar ao início</Link>
-          </Button>
+          <ReceberCredencial activityId={atividade.id} />
         </CardContent>
       </Card>
     </div>
