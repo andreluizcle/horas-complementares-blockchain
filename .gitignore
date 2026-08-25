@@ -50,3 +50,6 @@ next-env.d.ts
 # arquivos de instrução de agente (o `next dev` os recria quando detecta um agente)
 AGENTS.md
 CLAUDE.md
+
+# brief original do projeto (local, fora do repositório)
+prompt.md
