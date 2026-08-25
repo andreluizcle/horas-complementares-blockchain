@@ -45,8 +45,9 @@ on-chain e continua funcionando mesmo que o servidor de metadados saia do ar.
 ## Rodando localmente
 
 ```bash
-npm install
-cp .env.example .env.local   # preencha as variáveis
+npm install                  # roda `prisma generate` automaticamente
+cp .env.example .env         # preencha as variáveis
+npx prisma migrate deploy    # cria o SQLite local
 npm run dev
 ```
 
@@ -61,11 +62,12 @@ Abra http://localhost:3000 e conecte a Phantom **na rede devnet**
 | `HELIUS_API_KEY` | Chave gratuita da [Helius](https://helius.dev) para a DAS API |
 | `COLLECTION_ADDRESS` | Endereço da Core Collection, gerado uma vez por script |
 | `NEXT_PUBLIC_RPC_URL` | Opcional. Sem isso, usa o RPC público de devnet |
+| `DATABASE_URL` | Caminho do SQLite local. Padrão: `file:./prisma/dev.db` |
 
 ## Status
 
 - [x] **Fase 1** — Base do projeto, conexão de carteira em devnet
-- [ ] **Fase 2** — Organizador cria atividade, gera link e QR de check-in
+- [x] **Fase 2** — Organizador cria atividade, gera link e QR de check-in
 - [ ] **Fase 3** — Check-in e emissão da credencial Metaplex Core
 - [ ] **Fase 4** — Carteira do aluno, total de horas e filtro por categoria
 - [ ] **Fase 5** — Verificação pública, sem carteira

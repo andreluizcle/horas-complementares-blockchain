@@ -1,0 +1,40 @@
+// Persistência local do MVP: guarda apenas o que ainda não está on-chain.
+// A fonte de verdade de uma credencial emitida é sempre a blockchain — o que
+// está aqui é conveniência de leitura e um índice do que este app emitiu.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// Atividade criada pelo organizador, antes de qualquer check-in.
+model Activity {
+  id           String   @id @default(cuid())
+  nome         String
+  categoria    String
+  cargaHoraria Int
+  data         DateTime
+  emissor      String
+  createdAt    DateTime @default(now())
+
+  credentials Credential[]
+}
+
+/// Registro local de uma credencial já mintada (fase 3).
+model Credential {
+  assetId     String   @id
+  activityId  String
+  ownerWallet String
+  signature   String
+  mintedAt    DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  /// Impede que a mesma carteira receba duas credenciais da mesma atividade.
+  @@unique([activityId, ownerWallet])
+  @@index([ownerWallet])
+}
