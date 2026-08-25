@@ -46,3 +46,7 @@ next-env.d.ts
 *.db-journal
 
 /src/generated/prisma
+
+# arquivos de instrução de agente (o `next dev` os recria quando detecta um agente)
+AGENTS.md
+CLAUDE.md
