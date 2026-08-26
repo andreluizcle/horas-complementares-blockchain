@@ -89,7 +89,7 @@ como credencial primeiro e cai para carteira se não casar — quem usa não pre
 - **Solana devnet** via `@solana/web3.js` + `@solana/wallet-adapter-react`
 - **Metaplex Core** (`@metaplex-foundation/mpl-core` via Umi) para mintar cada credencial
 - **Helius DAS API** para listar os ativos de uma carteira
-- **Prisma + Postgres** para as atividades criadas antes do check-in
+- **Prisma + SQLite** para as atividades criadas antes do check-in
 
 ### Três decisões de arquitetura
 
@@ -112,7 +112,7 @@ on-chain em `permanent_freeze_delegate.rs` (`custom program error 0x9`).
 ```bash
 npm install                  # roda `prisma generate` automaticamente
 cp .env.example .env         # preencha as variáveis
-npx prisma migrate deploy    # aplica o schema no Postgres
+npx prisma migrate deploy    # cria o SQLite local
 npm run dev
 ```
 
@@ -121,8 +121,8 @@ Abra http://localhost:3000 e conecte a carteira **na rede devnet**
 Qualquer carteira compatível com Wallet Standard funciona — a detecção é
 automática, não há lista fixa no código.
 
-O banco é Postgres — qualquer provedor serve (Supabase, Neon, local). Cole a
-connection string em `DATABASE_URL`; a mesma URL serve para dev e produção.
+O banco é SQLite, um arquivo local — não precisa de servidor de banco rodando.
+O `.env.example` já vem com o caminho padrão preenchido.
 
 ### Variáveis de ambiente
 
@@ -132,32 +132,31 @@ connection string em `DATABASE_URL`; a mesma URL serve para dev e produção.
 | `HELIUS_API_KEY` | Chave gratuita da [Helius](https://helius.dev) para a DAS API |
 | `COLLECTION_ADDRESS` | Endereço da Core Collection, gerado uma vez por script |
 | `NEXT_PUBLIC_RPC_URL` | Opcional. Sem isso, usa o RPC público de devnet |
-| `DATABASE_URL` | Connection string do Postgres (Supabase, Neon, local — qualquer um) |
-| `DIRECT_URL` | Opcional. Conexão direta usada só pelas migrations, quando `DATABASE_URL` aponta para um pooler em modo *transaction* |
+| `DATABASE_URL` | Caminho do SQLite local. Padrão: `file:./prisma/dev.db` |
 
-## Publicando na Vercel
+## Publicando (ainda não feito)
 
-O `uri` de cada credencial é montado a partir da URL da requisição, então
-publicar resolve sozinho a limitação do `localhost`: a imagem da credencial
-passa a renderizar na carteira e no Explorer.
+O projeto roda hoje **apenas localmente**. Publicar exige um passo que não está
+feito: **trocar o SQLite por um Postgres**.
 
-1. **Banco.** Qualquer Postgres serve. No Supabase: *Project Settings →
-   Database → Connection string*. Pegue as duas —
-   o **pooler de transação** (porta 6543) para `DATABASE_URL`, que aguenta
-   melhor o serverless, e a **conexão direta** ou o pooler em modo *session*
-   (porta 5432) para `DIRECT_URL`, que as migrations exigem. Use as mesmas
-   no `.env` local, para dev e produção ficarem no mesmo schema.
-   *(Na Vercel também dá para criar um Neon por Storage → Create Database,
-   que injeta `DATABASE_URL` sozinho.)*
-2. **Variáveis.** Em *Settings → Environment Variables*, adicione
-   `APP_KEYPAIR_SECRET`, `HELIUS_API_KEY`, `COLLECTION_ADDRESS` e, se
-   estiver usando pooler, `DIRECT_URL` — com os mesmos valores do `.env`
-   local. Nenhuma leva o prefixo `NEXT_PUBLIC_`.
-3. **Deploy.** O script de build já roda `prisma migrate deploy` antes do
-   `next build`, então o schema é aplicado no primeiro deploy.
+O motivo é que plataformas como a Vercel rodam o código em ambientes efêmeros,
+onde o sistema de arquivos é descartado entre requisições — um banco em arquivo
+não sobrevive ali, e o `dev.db` nem é versionado. A troca foi tentada e revertida
+por ora, já que a publicação ficou para depois. O que ela envolve:
 
-A carteira do app precisa de SOL de devnet para emitir — confira com
-`npm run wallet:status` e abasteça em https://faucet.solana.com se acabar.
+1. `provider = "postgresql"` no `prisma/schema.prisma`, migration inicial regerada
+   (a atual é SQL de SQLite) e `@prisma/adapter-pg` no lugar do de SQLite em
+   `src/lib/prisma.ts`. Nenhuma outra parte do código muda.
+2. `prisma migrate deploy` antes do `next build`, para o schema ser aplicado no deploy.
+3. `APP_KEYPAIR_SECRET`, `HELIUS_API_KEY` e `COLLECTION_ADDRESS` configurados como
+   variáveis de ambiente na plataforma. Nenhuma leva o prefixo `NEXT_PUBLIC_`.
+4. Se o Postgres escolhido usar pooler em modo *transaction* (o caso do Supabase na
+   porta 6543), as migrations precisam de uma conexão direta separada — poolers nesse
+   modo não suportam as travas que o `prisma migrate` usa.
+
+Publicar também resolve sozinho uma limitação atual: o `uri` de cada credencial é
+montado a partir da URL da requisição, então em produção a imagem da credencial passa
+a renderizar na carteira e no Explorer, o que em `localhost` não acontece.
 
 > A Collection é criada uma vez, por script, e vale para qualquer ambiente:
 > o mesmo `COLLECTION_ADDRESS` local e em produção. Não rode
@@ -183,9 +182,8 @@ Este é um MVP de portfólio, e vale ser explícito sobre onde ele para:
 - **Rodando em `localhost`, a imagem da credencial não aparece** na carteira nem no Explorer,
   porque nenhum dos dois consegue acessar o `uri` apontando para a sua máquina. Os dados que
   provam a credencial estão on-chain e aparecem normalmente. Publicado, isso se resolve sozinho.
-- **A troca de SQLite para Postgres não foi exercitada contra um banco real** — o código compila
-  e o schema foi gerado, mas o fluxo completo só foi testado em SQLite. O deploy na Vercel
-  também ainda não foi feito.
+- **Roda só localmente.** O banco é SQLite em arquivo, que não sobrevive em hospedagem
+  serverless — publicar exige migrar para Postgres antes (veja a seção acima).
 - **Fase 6 (Solana Pay) não implementada** — era opcional no escopo original.
 
 ## Nota sobre `npm audit`

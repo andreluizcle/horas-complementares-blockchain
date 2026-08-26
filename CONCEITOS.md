@@ -26,7 +26,7 @@ Cada seção segue o mesmo formato: primeiro o conceito de forma independente do
 - [Tailwind CSS](#tailwind-css)
 - [shadcn/ui](#shadcnui)
 - [Prisma](#prisma)
-- [PostgreSQL](#postgresql)
+- [SQLite](#sqlite)
 
 ---
 
@@ -138,11 +138,13 @@ Cada seção segue o mesmo formato: primeiro o conceito de forma independente do
 
 **Por que está aqui.** Guarda duas coisas: a atividade criada pelo organizador — que precisa existir em algum lugar entre a criação e o check-in do primeiro aluno — e um índice do que já foi emitido, usado para não mintar a mesma credencial duas vezes para a mesma carteira. Note que o banco **não é a fonte da verdade** de nenhuma credencial: essa é sempre a blockchain. Tanto que as telas "minhas credenciais" e "verificar" leem direto da rede e funcionariam mesmo se o banco sumisse.
 
-### PostgreSQL
+### SQLite
 
-**O que é.** Um banco de dados relacional maduro e amplamente usado, que roda como um serviço ao qual a aplicação se conecta pela rede. É o padrão de fato para aplicações web que precisam guardar dados de forma confiável.
+**O que é.** Um banco de dados que roda como um arquivo único no disco, sem precisar de um servidor de banco de dados separado rodando em algum lugar. Basta o arquivo existir para a aplicação ler e escrever nele.
 
-**Por que está aqui.** O projeto começou com SQLite, que é um arquivo único e não precisa de servidor — perfeito para rodar localmente. Mas plataformas de hospedagem como a Vercel rodam o código em ambientes efêmeros, onde o sistema de arquivos é descartado entre requisições: um banco em arquivo simplesmente não sobrevive ali. Postgres resolve isso sendo um serviço externo, e como o Prisma abstrai a diferença, a troca não exigiu mudança nenhuma no código do app — só na configuração de conexão.
+**Por que está aqui.** Como o banco guarda pouca coisa — e nada que seja fonte da verdade de uma credencial —, um banco de produção robusto seria exagero. SQLite é suficiente e não exige instalar nem configurar nada para rodar o projeto localmente.
+
+**Uma ressalva que vale conhecer.** Plataformas de hospedagem modernas (Vercel, por exemplo) rodam o código em ambientes efêmeros, onde o sistema de arquivos é descartado entre requisições — um banco em arquivo simplesmente não sobrevive ali. Por isso publicar este projeto exigiria trocar o SQLite por um Postgres hospedado. Como o Prisma abstrai a diferença, essa troca mexe só na configuração de conexão, não no código do app.
 
 ---
 
