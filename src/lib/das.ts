@@ -144,21 +144,63 @@ export async function buscarCredenciaisDaCarteira(owner: string) {
   return encontradas.sort(ordenarPorDataDesc);
 }
 
-/** Busca uma credencial específica pelo id do ativo. Usada na fase 5. */
-export async function buscarCredencialPorId(assetId: string) {
+type ItemDasCompleto = ItemDas & {
+  grouping?: { group_key: string; group_value: string }[];
+  ownership?: { owner?: string };
+};
+
+export type CredencialVerificada = CredencialOnChain & { owner: string | null };
+
+/**
+ * Busca uma credencial pelo id do ativo.
+ *
+ * Devolve `null` tanto quando o id não existe quanto quando existe mas não
+ * pertence à nossa collection — nos dois casos a resposta honesta é "isto não
+ * é uma credencial deste app", e quem chama precisa poder tentar interpretar
+ * a entrada como endereço de carteira.
+ */
+export async function buscarCredencialPorId(
+  assetId: string,
+): Promise<CredencialVerificada | null> {
   const collection = getCollectionAddress();
-  const item = await chamarDas<ItemDas & { grouping?: { group_key: string; group_value: string }[]; ownership?: { owner?: string } }>(
-    "getAsset",
-    { id: assetId },
-  );
+
+  let item: ItemDasCompleto;
+  try {
+    item = await chamarDas<ItemDasCompleto>("getAsset", { id: assetId });
+  } catch (e) {
+    // A DAS responde "Asset Not Found" como erro, e não como resultado vazio.
+    if (e instanceof DasError && /not found/i.test(e.message)) return null;
+    throw e;
+  }
+
+  if (item.burnt) return null;
 
   const daNossaCollection = (item.grouping ?? []).some(
     (g) => g.group_key === "collection" && g.group_value === collection,
   );
   if (!daNossaCollection) return null;
 
+  return { ...paraCredencial(item), owner: item.ownership?.owner ?? null };
+}
+
+export type ResultadoVerificacao =
+  | { tipo: "ativo"; credencial: CredencialVerificada }
+  | { tipo: "carteira"; owner: string; credenciais: CredencialOnChain[] };
+
+/**
+ * Verifica uma entrada que pode ser id de ativo OU endereço de carteira — os
+ * dois são chaves base58 de 32 bytes, indistinguíveis pelo formato. A ordem é
+ * ativo primeiro: se casar, é resposta exata; senão tratamos como carteira.
+ */
+export async function verificar(
+  entrada: string,
+): Promise<ResultadoVerificacao> {
+  const credencial = await buscarCredencialPorId(entrada);
+  if (credencial) return { tipo: "ativo", credencial };
+
   return {
-    ...paraCredencial(item),
-    owner: item.ownership?.owner ?? null,
+    tipo: "carteira",
+    owner: entrada,
+    credenciais: await buscarCredenciaisDaCarteira(entrada),
   };
 }
