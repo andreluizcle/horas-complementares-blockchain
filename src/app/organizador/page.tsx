@@ -27,9 +27,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   CATEGORIAS,
+  dataBrParaIso,
   formatarData,
   formatarHoras,
+  isoParaDataBr,
   labelDaCategoria,
+  mascararDataBr,
   novaAtividadeSchema,
 } from "@/lib/activity";
 import type { AtividadeDTO } from "@/lib/serializers";
@@ -40,7 +43,7 @@ const VALORES_INICIAIS = {
   nome: "",
   categoria: "",
   cargaHoraria: "",
-  data: new Date().toISOString().slice(0, 10),
+  data: isoParaDataBr(new Date().toISOString().slice(0, 10)),
   emissor: "",
 };
 
@@ -58,7 +61,14 @@ export default function OrganizadorPage() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    const parsed = novaAtividadeSchema.safeParse(valores);
+    // O campo guarda `dd/mm/aaaa`; o schema e a API falam ISO.
+    const dataIso = dataBrParaIso(valores.data);
+    if (!dataIso) {
+      setErros((e) => ({ ...e, data: ["Data inválida. Use dd/mm/aaaa."] }));
+      return;
+    }
+
+    const parsed = novaAtividadeSchema.safeParse({ ...valores, data: dataIso });
     if (!parsed.success) {
       setErros(z.flattenError(parsed.error).fieldErrors);
       return;
@@ -166,9 +176,11 @@ export default function OrganizadorPage() {
               <Campo id="data" label="Data" erro={erros.data}>
                 <Input
                   id="data"
-                  type="date"
+                  inputMode="numeric"
+                  placeholder="dd/mm/aaaa"
+                  maxLength={10}
                   value={valores.data}
-                  onChange={(e) => setCampo("data", e.target.value)}
+                  onChange={(e) => setCampo("data", mascararDataBr(e.target.value))}
                   aria-invalid={Boolean(erros.data)}
                 />
               </Campo>

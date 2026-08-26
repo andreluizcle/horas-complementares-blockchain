@@ -106,16 +106,31 @@ export function WalletButton({ className }: { className?: string }) {
 
           {available.length === 0 ? (
             <div className="text-muted-foreground space-y-3 text-sm">
-              <p>Nenhuma carteira Solana detectada neste navegador.</p>
-              <Button asChild variant="outline" className="w-full">
-                <a
-                  href="https://phantom.app/download"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Instalar a Phantom
-                </a>
-              </Button>
+              <p>
+                Nenhuma carteira Solana detectada neste navegador. Instale uma
+                extensão de carteira e recarregue a página — qualquer carteira
+                compatível com o padrão Wallet Standard funciona aqui.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button asChild variant="outline" className="w-full">
+                  <a
+                    href="https://phantom.app/download"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Instalar a Phantom
+                  </a>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <a
+                    href="https://solflare.com/download"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Instalar a Solflare
+                  </a>
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col gap-2">

@@ -57,6 +57,41 @@ export function formatarData(data: string | Date) {
   return `${dia}/${mes}/${ano}`;
 }
 
+/**
+ * Aplica a máscara `dd/mm/aaaa` conforme o usuário digita, ignorando tudo que
+ * não for dígito. Usado no formulário porque o `<input type="date">` nativo
+ * renderiza no formato da locale do navegador, que não dá para controlar.
+ */
+export function mascararDataBr(valor: string) {
+  const digitos = valor.replace(/\D/g, "").slice(0, 8);
+  const dia = digitos.slice(0, 2);
+  const mes = digitos.slice(2, 4);
+  const ano = digitos.slice(4, 8);
+  return [dia, mes, ano].filter(Boolean).join("/");
+}
+
+/**
+ * Converte `26/08/2026` em `2026-08-26`, ou devolve `null` se a data não
+ * existir no calendário (31/02, mês 13, ano incompleto...).
+ */
+export function dataBrParaIso(valor: string) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor.trim());
+  if (!m) return null;
+  const [, dia, mes, ano] = m;
+  const iso = `${ano}-${mes}-${dia}`;
+  const d = new Date(`${iso}T00:00:00.000Z`);
+  // Rejeita datas que o Date "conserta" sozinho, como 31/02 virando 03/03.
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== iso) {
+    return null;
+  }
+  return iso;
+}
+
+/** Converte `2026-08-26` em `26/08/2026` para preencher o campo mascarado. */
+export function isoParaDataBr(iso: string) {
+  return formatarData(iso);
+}
+
 export function formatarHoras(horas: number) {
   return `${horas} ${horas === 1 ? "hora" : "horas"}`;
 }

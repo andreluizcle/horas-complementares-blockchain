@@ -15,7 +15,12 @@ import { Separator } from "@/components/ui/separator";
 import { WalletButton } from "@/components/wallet-button";
 import { explorerAddressUrl, explorerTxUrl, shortenAddress } from "@/lib/solana";
 
-type Resultado = { assetId: string; signature: string; duplicada?: boolean };
+type Resultado = {
+  assetId: string;
+  signature: string;
+  collection?: string | null;
+  duplicada?: boolean;
+};
 
 export function ReceberCredencial({ activityId }: { activityId: string }) {
   const { publicKey, connected } = useWallet();
@@ -98,7 +103,25 @@ export function ReceberCredencial({ activityId }: { activityId: string }) {
               <ExternalLink className="size-3" />
             </a>
           </Linha>
+          {resultado.collection && (
+            <Linha rotulo="Emissor (collection)">
+              <a
+                href={explorerAddressUrl(resultado.collection)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 font-mono hover:underline"
+              >
+                {shortenAddress(resultado.collection, 6)}
+                <ExternalLink className="size-3" />
+              </a>
+            </Linha>
+          )}
         </div>
+
+        <p className="text-muted-foreground text-xs">
+          A credencial pertence à collection acima — é isso que prova que ela foi
+          emitida por este app, e não por qualquer um.
+        </p>
 
         <Separator />
 

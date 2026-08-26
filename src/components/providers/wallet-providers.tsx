@@ -37,7 +37,8 @@ export function SolanaProviders({ children }: { children: React.ReactNode }) {
     }
     if (error instanceof WalletNotReadyError) {
       toast.error("Carteira não encontrada", {
-        description: "Instale a extensão Phantom e recarregue a página.",
+        description:
+          "Instale uma extensão de carteira Solana (Phantom, Solflare...) e recarregue a página.",
       });
       return;
     }

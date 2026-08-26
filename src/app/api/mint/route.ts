@@ -52,11 +52,21 @@ export async function POST(request: Request) {
     where: { activityId_ownerWallet: { activityId, ownerWallet } },
   });
   if (jaEmitida) {
+    // A tela mostra a collection como prova de emissor; se a configuração
+    // estiver incompleta, o link some em vez de derrubar a resposta.
+    let colecao: string | null = null;
+    try {
+      colecao = getCollectionAddress();
+    } catch {
+      colecao = null;
+    }
+
     return NextResponse.json(
       {
         error: "Esta carteira já recebeu a credencial desta atividade.",
         assetId: jaEmitida.assetId,
         signature: jaEmitida.signature,
+        collection: colecao,
         duplicada: true,
       },
       { status: 409 },
@@ -135,6 +145,7 @@ export async function POST(request: Request) {
       {
         assetId: credencial.assetId,
         signature: credencial.signature,
+        collection: collectionAddress,
         mintedAt: credencial.mintedAt.toISOString(),
       },
       { status: 201 },
