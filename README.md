@@ -56,7 +56,7 @@ Abra http://localhost:3000 e conecte a carteira **na rede devnet**
 Qualquer carteira compatível com Wallet Standard funciona — a detecção é
 automática, não há lista fixa no código.
 
-O banco é Postgres. Crie um grátis no [Neon](https://neon.tech) e cole a
+O banco é Postgres — qualquer provedor serve (Supabase, Neon, local). Cole a
 connection string em `DATABASE_URL`; a mesma URL serve para dev e produção.
 
 ### Variáveis de ambiente
@@ -67,7 +67,8 @@ connection string em `DATABASE_URL`; a mesma URL serve para dev e produção.
 | `HELIUS_API_KEY` | Chave gratuita da [Helius](https://helius.dev) para a DAS API |
 | `COLLECTION_ADDRESS` | Endereço da Core Collection, gerado uma vez por script |
 | `NEXT_PUBLIC_RPC_URL` | Opcional. Sem isso, usa o RPC público de devnet |
-| `DATABASE_URL` | Connection string do Postgres (Neon, Supabase, local — qualquer um) |
+| `DATABASE_URL` | Connection string do Postgres (Supabase, Neon, local — qualquer um) |
+| `DIRECT_URL` | Opcional. Conexão direta usada só pelas migrations, quando `DATABASE_URL` aponta para um pooler em modo *transaction* |
 
 ## Publicando na Vercel
 
@@ -75,12 +76,18 @@ O `uri` de cada credencial é montado a partir da URL da requisição, então
 publicar resolve sozinho a limitação do `localhost`: a imagem da credencial
 passa a renderizar na carteira e no Explorer.
 
-1. **Banco.** No painel do projeto → *Storage* → *Create Database* → Neon.
-   A integração injeta `DATABASE_URL` automaticamente. Use a mesma URL no
-   `.env` local, para dev e produção ficarem no mesmo schema.
+1. **Banco.** Qualquer Postgres serve. No Supabase: *Project Settings →
+   Database → Connection string*. Pegue as duas —
+   o **pooler de transação** (porta 6543) para `DATABASE_URL`, que aguenta
+   melhor o serverless, e a **conexão direta** ou o pooler em modo *session*
+   (porta 5432) para `DIRECT_URL`, que as migrations exigem. Use as mesmas
+   no `.env` local, para dev e produção ficarem no mesmo schema.
+   *(Na Vercel também dá para criar um Neon por Storage → Create Database,
+   que injeta `DATABASE_URL` sozinho.)*
 2. **Variáveis.** Em *Settings → Environment Variables*, adicione
-   `APP_KEYPAIR_SECRET`, `HELIUS_API_KEY` e `COLLECTION_ADDRESS` com os
-   mesmos valores do `.env` local. Nenhuma leva o prefixo `NEXT_PUBLIC_`.
+   `APP_KEYPAIR_SECRET`, `HELIUS_API_KEY`, `COLLECTION_ADDRESS` e, se
+   estiver usando pooler, `DIRECT_URL` — com os mesmos valores do `.env`
+   local. Nenhuma leva o prefixo `NEXT_PUBLIC_`.
 3. **Deploy.** O script de build já roda `prisma migrate deploy` antes do
    `next build`, então o schema é aplicado no primeiro deploy.
 
