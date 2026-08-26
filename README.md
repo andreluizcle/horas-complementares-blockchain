@@ -30,7 +30,7 @@ sem intermediário.
 - **Solana devnet** via `@solana/web3.js` + `@solana/wallet-adapter-react`
 - **Metaplex Core** (`@metaplex-foundation/mpl-core` via Umi) para mintar cada credencial
 - **Helius DAS API** para listar os ativos de uma carteira
-- **Prisma + SQLite** para as atividades criadas antes do check-in
+- **Prisma + Postgres** para as atividades criadas antes do check-in
 
 ### Duas decisões de arquitetura
 
@@ -47,12 +47,17 @@ on-chain e continua funcionando mesmo que o servidor de metadados saia do ar.
 ```bash
 npm install                  # roda `prisma generate` automaticamente
 cp .env.example .env         # preencha as variáveis
-npx prisma migrate deploy    # cria o SQLite local
+npx prisma migrate deploy    # aplica o schema no Postgres
 npm run dev
 ```
 
-Abra http://localhost:3000 e conecte a Phantom **na rede devnet**
-(Configurações → Developer Settings → Testnet Mode → Devnet).
+Abra http://localhost:3000 e conecte a carteira **na rede devnet**
+(na Phantom: Configurações → Developer Settings → Testnet Mode → Devnet).
+Qualquer carteira compatível com Wallet Standard funciona — a detecção é
+automática, não há lista fixa no código.
+
+O banco é Postgres. Crie um grátis no [Neon](https://neon.tech) e cole a
+connection string em `DATABASE_URL`; a mesma URL serve para dev e produção.
 
 ### Variáveis de ambiente
 
@@ -62,7 +67,30 @@ Abra http://localhost:3000 e conecte a Phantom **na rede devnet**
 | `HELIUS_API_KEY` | Chave gratuita da [Helius](https://helius.dev) para a DAS API |
 | `COLLECTION_ADDRESS` | Endereço da Core Collection, gerado uma vez por script |
 | `NEXT_PUBLIC_RPC_URL` | Opcional. Sem isso, usa o RPC público de devnet |
-| `DATABASE_URL` | Caminho do SQLite local. Padrão: `file:./prisma/dev.db` |
+| `DATABASE_URL` | Connection string do Postgres (Neon, Supabase, local — qualquer um) |
+
+## Publicando na Vercel
+
+O `uri` de cada credencial é montado a partir da URL da requisição, então
+publicar resolve sozinho a limitação do `localhost`: a imagem da credencial
+passa a renderizar na carteira e no Explorer.
+
+1. **Banco.** No painel do projeto → *Storage* → *Create Database* → Neon.
+   A integração injeta `DATABASE_URL` automaticamente. Use a mesma URL no
+   `.env` local, para dev e produção ficarem no mesmo schema.
+2. **Variáveis.** Em *Settings → Environment Variables*, adicione
+   `APP_KEYPAIR_SECRET`, `HELIUS_API_KEY` e `COLLECTION_ADDRESS` com os
+   mesmos valores do `.env` local. Nenhuma leva o prefixo `NEXT_PUBLIC_`.
+3. **Deploy.** O script de build já roda `prisma migrate deploy` antes do
+   `next build`, então o schema é aplicado no primeiro deploy.
+
+A carteira do app precisa de SOL de devnet para emitir — confira com
+`npm run wallet:status` e abasteça em https://faucet.solana.com se acabar.
+
+> A Collection é criada uma vez, por script, e vale para qualquer ambiente:
+> o mesmo `COLLECTION_ADDRESS` local e em produção. Não rode
+> `collection:create` de novo ao publicar, senão as credenciais antigas
+> ficam fora da collection nova e param de ser reconhecidas.
 
 ## Status
 
