@@ -68,7 +68,7 @@ Abra http://localhost:3000 e conecte a Phantom **na rede devnet**
 
 - [x] **Fase 1** — Base do projeto, conexão de carteira em devnet
 - [x] **Fase 2** — Organizador cria atividade, gera link e QR de check-in
-- [ ] **Fase 3** — Check-in e emissão da credencial Metaplex Core
+- [x] **Fase 3** — Check-in e emissão da credencial Metaplex Core (soulbound, dentro da collection)
 - [ ] **Fase 4** — Carteira do aluno, total de horas e filtro por categoria
 - [ ] **Fase 5** — Verificação pública, sem carteira
 - [ ] **Fase 6** — Check-in via Solana Pay *(opcional)*
