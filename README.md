@@ -51,15 +51,24 @@ ou imprimir no evento.
 
 ### Check-in — o aluno recebe a credencial
 
-O aluno escaneia o QR, vê os dados da atividade e clica em "receber credencial". A tela é
+![Tela de check-in](./prints/05-checkin.png)
+
+O aluno escaneia o QR, confere os dados da atividade e clica em "receber credencial". A tela é
 mobile-first porque na prática ela é aberta no celular, em pé, durante o evento.
 
 O detalhe que mais importa aqui: **o aluno não paga nada e não assina transação nenhuma.** Quem
-paga a taxa e assina é a carteira do app, no servidor. Do lado do aluno, é um clique. A tela de
-sucesso mostra três links para o Explorer — a credencial, a transação e a Collection do emissor.
+paga a taxa e assina é a carteira do app, no servidor. Do lado do aluno, é um clique — a carteira
+nem chega a abrir pedindo aprovação.
 
-*(Sem print: esta tela é a única que depende de um evento real acontecendo, e os prints foram
-tirados em uma sessão de desktop.)*
+![Credencial emitida](./prints/06-checkin-sucesso.png)
+
+A confirmação traz três links para o Solana Explorer, e cada um prova uma coisa diferente:
+a **credencial** (o ativo em si), a **transação** que a criou, e o **emissor** — a Collection à
+qual ela pertence, que é o que distingue uma credencial real de um NFT qualquer que alguém
+mintasse com o mesmo nome.
+
+Clicar de novo em "receber credencial" não emite uma segunda: a tela informa que a carteira já
+tem aquela credencial e mostra o link da existente.
 
 ### Minhas credenciais
 
@@ -81,6 +90,38 @@ conferindo um certificado.
 O campo aceita tanto um endereço de carteira quanto o id de uma credencial. Os dois são chaves
 base58 de 32 bytes e **não dá para distinguir pelo formato**, então a busca tenta interpretar
 como credencial primeiro e cai para carteira se não casar — quem usa não precisa escolher.
+
+### A prova on-chain
+
+O Solana Explorer ainda tem suporte fraco a Metaplex Core — chega a rotular um ativo Core como
+"compressed NFT" e não mostra a Collection. Por isso a verificação real deste projeto não depende
+dele: os dados vivem no plugin `Attributes`, e qualquer RPC com DAS API os devolve.
+
+Uma credencial emitida, consultada via `getAsset`:
+
+```
+interface  : MplCoreAsset
+owner      : 7xJSTkKcgy2PxmgBLm8xTLb7NosQjZGmmwNFyabusn8c
+grouping   : [{ group_key: "collection",
+                group_value: "3FpUQLR4JpAPTRJrkUvdq6fnJQoCqnfJeZXYUi5MiwMA" }]
+plugins    : ["attributes", "permanent_freeze_delegate"]
+attributes :
+    categoria    = Palestra
+    cargaHoraria = 4
+    data         = 26/08/2026
+    emissor      = Coordenação de Ciência da Computação
+    atividadeId  = cmta7umv80000gtb6tgyy3z57
+```
+
+E a intransferibilidade não foi deduzida de um nome de campo — foi testada. Tentando transferir
+com o dono legítimo, com saldo e assinando corretamente, o programa on-chain recusa:
+
+```
+Program CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d invoke [1]
+Program log: Instruction: Transfer
+Program log: programs/mpl-core/src/plugins/internal/permanent/permanent_freeze_delegate.rs:58:Reject
+Program log: Error: Custom program error: 0x9
+```
 
 ## Stack
 
@@ -107,32 +148,148 @@ comprovaria nada — bastaria comprar as horas de outra pessoa. Cada ativo carre
 o dono legítimo, com saldo e assinando corretamente, tem a transferência rejeitada pelo programa
 on-chain em `permanent_freeze_delegate.rs` (`custom program error 0x9`).
 
-## Rodando localmente
+## Rodando na sua máquina
+
+Passo a passo completo, do zero. Nada aqui custa dinheiro: tudo roda na devnet da
+Solana, e as duas contas externas usadas (Helius e faucet) têm plano gratuito sem
+cartão de crédito.
+
+### 0. O que você precisa antes
+
+- **Node.js 20.9 ou mais novo** — confira com `node -v`. Se não tiver,
+  instale em [nodejs.org](https://nodejs.org).
+- **Git**, para clonar o repositório.
+- **Uma extensão de carteira Solana** no navegador. [Phantom](https://phantom.app/download)
+  e [Solflare](https://solflare.com/download) funcionam; qualquer carteira compatível
+  com o padrão Wallet Standard é detectada automaticamente, não há lista fixa no código.
+
+> **Crie uma carteira nova, não importe uma que você já use.** Este projeto é de teste
+> e a carteira aqui é descartável.
+
+### 1. Clonar e instalar
 
 ```bash
-npm install                  # roda `prisma generate` automaticamente
-cp .env.example .env         # preencha as variáveis
-npx prisma migrate deploy    # cria o SQLite local
+git clone https://github.com/andreluizcle/horas-complementares-blockchain.git
+cd horas-complementares-blockchain
+npm install
+```
+
+O `npm install` já roda `prisma generate` sozinho no final.
+
+### 2. Criar o arquivo de configuração
+
+```bash
+cp .env.example .env
+```
+
+As próximas etapas vão preenchendo esse arquivo. Ele **nunca** vai para o Git —
+contém a chave privada que assina as emissões.
+
+### 3. Pegar uma chave da Helius
+
+A Helius é o serviço que responde "quais credenciais essa carteira tem" sem precisar
+varrer a blockchain inteira. O plano gratuito basta.
+
+1. Crie uma conta em [helius.dev](https://helius.dev) (não pede cartão).
+2. No painel, copie a **API Key** do projeto.
+3. Cole no `.env`:
+
+```
+HELIUS_API_KEY=sua-chave-aqui
+```
+
+### 4. Gerar a carteira que emite as credenciais
+
+Esta é a carteira do *app*, não a sua — é ela que paga as taxas de emissão, para que
+o aluno não precise ter SOL nem assinar nada.
+
+```bash
+npm run keypair:new
+```
+
+O script gera a chave, grava no `.env` e imprime o endereço público. Se já houver uma
+chave lá, ele não sobrescreve.
+
+### 5. Abastecer essa carteira com SOL de devnet
+
+SOL de devnet não vale dinheiro — serve só para pagar as taxas da rede de teste.
+
+1. Copie o endereço público que o passo anterior imprimiu.
+2. Abra [faucet.solana.com](https://faucet.solana.com), escolha a rede **devnet**,
+   cole o endereço e peça o SOL.
+3. Confira que chegou:
+
+```bash
+npm run wallet:status
+```
+
+Cada emissão custa cerca de **0.0035 SOL**, então mesmo 0.05 SOL já dão dezenas de
+credenciais. Se o faucet oficial estiver seco, dá para usar o "get test SOL" da própria
+Phantom em modo devnet e transferir para esse endereço.
+
+### 6. Criar a Collection
+
+A Collection é o "carimbo" do emissor: todo ativo é mintado dentro dela, e é isso que
+permite provar depois que uma credencial saiu deste app, e não de qualquer um.
+
+```bash
+npm run collection:create
+```
+
+Rode **uma única vez**. O script imprime o endereço; cole no `.env`:
+
+```
+COLLECTION_ADDRESS=endereco-impresso-pelo-script
+```
+
+> Criar uma segunda Collection faria as credenciais antigas deixarem de ser reconhecidas,
+> porque elas continuariam apontando para a primeira. O script se recusa a rodar se a
+> variável já estiver preenchida.
+
+### 7. Criar o banco e subir o app
+
+```bash
+npx prisma migrate deploy
 npm run dev
 ```
 
-Abra http://localhost:3000 e conecte a carteira **na rede devnet**
-(na Phantom: Configurações → Developer Settings → Testnet Mode → Devnet).
-Qualquer carteira compatível com Wallet Standard funciona — a detecção é
-automática, não há lista fixa no código.
+Abra [http://localhost:3000](http://localhost:3000).
 
-O banco é SQLite, um arquivo local — não precisa de servidor de banco rodando.
-O `.env.example` já vem com o caminho padrão preenchido.
+### 8. Colocar a carteira em devnet
+
+Antes de conectar, mude a rede na extensão — senão ela não vai enxergar nada.
+Na Phantom: *Configurações → Developer Settings → Testnet Mode → Solana Devnet*.
+
+### 9. Testar o fluxo inteiro
+
+1. Em `/organizador`, crie uma atividade.
+2. Abra o link de check-in que aparece (ou escaneie o QR pelo celular, usando o
+   endereço de rede que o `npm run dev` imprime, algo como `http://192.168.0.10:3000`).
+3. Conecte a carteira e clique em **receber credencial**. Você não deve assinar nada.
+4. Veja o resultado em `/minhas-credenciais`.
+5. Cole seu endereço em `/verificar` — de preferência numa janela anônima, para
+   confirmar que a verificação funciona sem carteira nenhuma conectada.
+
+### Se algo der errado
+
+| Sintoma | Causa provável |
+|---|---|
+| "Nenhuma carteira Solana detectada" | Extensão não instalada, ou a página não foi recarregada depois de instalar |
+| A emissão falha dizendo que falta SOL | A carteira do app secou — rode `npm run wallet:status` e abasteça de novo |
+| Erro citando `COLLECTION_ADDRESS` | O passo 6 não foi feito, ou o endereço não foi colado no `.env` |
+| Erro de RPC ou "acesso recusado" | `HELIUS_API_KEY` ausente, errada ou expirada |
+| A imagem da credencial não aparece na carteira | Esperado em `localhost` — veja *Limitações conhecidas* |
+| Páginas com erro depois de trocar o banco | Apague a pasta `.next` e suba de novo; o cache de build guarda o adapter antigo |
 
 ### Variáveis de ambiente
 
 | Variável | Descrição |
 |---|---|
-| `APP_KEYPAIR_SECRET` | Keypair de devnet (base58) que paga as taxas de mint. **Server-only.** |
+| `APP_KEYPAIR_SECRET` | Keypair de devnet (base58) que paga as taxas de mint. **Server-only** — nunca prefixe com `NEXT_PUBLIC_`. |
 | `HELIUS_API_KEY` | Chave gratuita da [Helius](https://helius.dev) para a DAS API |
 | `COLLECTION_ADDRESS` | Endereço da Core Collection, gerado uma vez por script |
-| `NEXT_PUBLIC_RPC_URL` | Opcional. Sem isso, usa o RPC público de devnet |
 | `DATABASE_URL` | Caminho do SQLite local. Padrão: `file:./prisma/dev.db` |
+| `NEXT_PUBLIC_RPC_URL` | Opcional. Sem isso, usa o RPC público de devnet. **Nunca** ponha aqui a URL da Helius: ela contém a chave, e variáveis `NEXT_PUBLIC_` vão para o navegador. |
 
 ## Publicando (ainda não feito)
 
